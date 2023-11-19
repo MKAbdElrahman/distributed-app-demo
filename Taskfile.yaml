@@ -1,0 +1,9 @@
+version: 3
+
+tasks:
+  run-registrar:
+    - go run ./cmd/services/registrar {{.CLI_ARGS}}
+  run-logging:
+    - go run ./cmd/services/logging {{.CLI_ARGS}}
+
+  
