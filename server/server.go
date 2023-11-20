@@ -36,6 +36,8 @@ type Server struct {
 	// RequiredServices is a list of service names that this service depends on.
 	RequiredServices []string
 
+	ConnectedInstances registry.ConnectedInstances
+
 	// NotificationEndpoint is the URL where the server receives notifications.
 	NotificationEndpoint string
 }
@@ -46,6 +48,8 @@ func (s *Server) StartServer() error {
 		Addr:    serverAddr,
 		Handler: s.Router,
 	}
+
+	s.RegisterNotifyRoute()
 
 	go func() {
 		log.Printf("Starting server on port %d...", s.Port)
@@ -110,11 +114,23 @@ func (s *Server) RegisterMe() error {
 }
 
 func (s *Server) DeregisterMe() error {
+	selfRegistration := registry.Registration{
+		ServiceType:          s.ServiceType,
+		Port:                 s.Port,
+		IP:                   "127.0.0.1",
+		RequiredServices:     s.RequiredServices,
+		NotificationEndpoint: s.NotificationEndpoint,
+	}
 
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%v/%v", s.DeregistrationAddr, s.ServiceType), nil)
+	// Assuming ServiceType is unique and can be used as a unique identifier for the resource
+	url := fmt.Sprintf("%v/%v/%v/%v", s.DeregistrationAddr, selfRegistration.ServiceType, selfRegistration.IP, selfRegistration.Port)
+
+	fmt.Println(url)
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		return err
 	}
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -17,7 +18,7 @@ type RegistrationHandler struct {
 func (rh *RegistrationHandler) RegisterRoutes(r *chi.Mux) {
 	r.Post("/register", rh.RegisterService)
 	r.Get("/services", rh.GetServices)
-	r.Delete("/deregister/{serviceName}", rh.DeregisterService)
+	r.Delete("/deregister/{serviceName}/{ip}/{port}", rh.DeregisterService)
 }
 
 func (rh *RegistrationHandler) RegisterService(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +34,7 @@ func (rh *RegistrationHandler) RegisterService(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err = rh.notifyDependentServices("register", registration.ServiceType)
+	err = rh.notifyDependentServices("register", registration.ServiceType, registeredService.Port, registration.IP)
 	if err != nil {
 		http.Error(w, "failed to notify dependent services", http.StatusInternalServerError)
 		return
@@ -56,12 +57,21 @@ func (rh *RegistrationHandler) GetServices(w http.ResponseWriter, r *http.Reques
 
 func (rh *RegistrationHandler) DeregisterService(w http.ResponseWriter, r *http.Request) {
 	serviceName := chi.URLParam(r, "serviceName")
-	if serviceName == "" {
-		http.Error(w, "invalid service name", http.StatusBadRequest)
+	portParam := chi.URLParam(r, "port")
+	ip := chi.URLParam(r, "ip")
+
+	if serviceName == "" || ip == "" || portParam == "" {
+		http.Error(w, "invalid service name, port, or IP", http.StatusBadRequest)
 		return
 	}
 
-	err := rh.notifyDependentServices("deregister", serviceName)
+	port, err := strconv.Atoi(portParam)
+	if err != nil {
+		http.Error(w, "invalid port", http.StatusBadRequest)
+		return
+	}
+
+	err = rh.notifyDependentServices("deregister", serviceName, port, ip)
 	if err != nil {
 		http.Error(w, "failed to notify dependent services", http.StatusInternalServerError)
 		return
@@ -77,8 +87,8 @@ func (rh *RegistrationHandler) DeregisterService(w http.ResponseWriter, r *http.
 	w.Write([]byte("Service deregistered successfully"))
 }
 
-func (rh *RegistrationHandler) notifyDependentServices(action string, serviceName string) error {
-	dependentServices, err := rh.Registry.GetDependentServices(serviceName)
+func (rh *RegistrationHandler) notifyDependentServices(action string, serviceType string, port int, ip string) error {
+	dependentServices, err := rh.Registry.GetDependentServices(serviceType)
 	if err != nil {
 		return err
 	}
@@ -88,7 +98,9 @@ func (rh *RegistrationHandler) notifyDependentServices(action string, serviceNam
 
 		payload := map[string]interface{}{
 			"action":      action,
-			"serviceName": serviceName,
+			"serviceType": serviceType,
+			"port":        port,
+			"ip":          ip,
 		}
 
 		payloadJSON, err := json.Marshal(payload)

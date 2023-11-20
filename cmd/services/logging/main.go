@@ -1,6 +1,7 @@
 package main
 
 import (
+	"demo/registry"
 	"demo/server"
 	"flag"
 	"fmt"
@@ -36,6 +37,7 @@ func main() {
 		Port:                 *port,
 		ServiceType:          "Logging",
 		RequiredServices:     []string{},
+		ConnectedInstances:   make(registry.ConnectedInstances),
 		NotificationEndpoint: fmt.Sprintf("http://localhost:%d/notify", *port),
 	}
 

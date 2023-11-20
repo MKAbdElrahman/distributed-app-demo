@@ -5,12 +5,22 @@ import (
 	"sync"
 )
 
+// ConnectedInstanceAddr represents the address information of a connected instance.
+type ConnectedInstanceAddr struct {
+	IP   string `json:"ip"`
+	Port int    `json:"port"`
+}
+
+// ConnectedInstance represents a specific instance of a connected service.
+type ConnectedInstances map[string]ConnectedInstanceAddr
+
 type Registration struct {
-	ServiceType          string   `json:"serviceType"`
-	Port                 int      `json:"port"`
-	IP                   string   `json:"ip"`
-	RequiredServices     []string `json:"dependentServices"`
-	NotificationEndpoint string   `json:"notificationEndpoint"`
+	ServiceType          string             `json:"serviceType"`
+	Port                 int                `json:"port"`
+	IP                   string             `json:"ip"`
+	RequiredServices     []string           `json:"dependentServices"`
+	ConnectedInstances   ConnectedInstances `json:"connectedInstances"`
+	NotificationEndpoint string             `json:"notificationEndpoint"`
 }
 
 type ServiceRegistry interface {

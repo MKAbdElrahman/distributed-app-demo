@@ -37,6 +37,7 @@ func main() {
 		Port:                 *port,
 		ServiceType:          "Registrar",
 		RequiredServices:     []string{},
+		ConnectedInstances:   make(registry.ConnectedInstances),
 		NotificationEndpoint: fmt.Sprintf("http://localhost:%d/notify", *port),
 	}
 
