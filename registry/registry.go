@@ -15,6 +15,7 @@ type Registration struct {
 
 type ServiceRegistry interface {
 	GetServices() ([]Registration, error)
+	GetServicesByType(name string) ([]Registration, error)
 	GetDependentServices(serviceName string) ([]Registration, error)
 	PostService(r *Registration) (*Registration, error)
 	DeleteService(serviceName string) error
@@ -95,4 +96,23 @@ func (r *InMemoryServiceRegistry) GetDependentServices(serviceName string) ([]Re
 	}
 
 	return dependentServices, nil
+}
+
+func (r *InMemoryServiceRegistry) GetServicesByType(serviceType string) ([]Registration, error) {
+	if serviceType == "" {
+		return nil, errors.New("invalid service type")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var servicesByType []Registration
+
+	for _, existingService := range r.services {
+		if existingService.ServiceType == serviceType {
+			servicesByType = append(servicesByType, existingService)
+		}
+	}
+
+	return servicesByType, nil
 }
