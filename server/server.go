@@ -15,13 +15,28 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Server represents a service that handles service registration, deregistration,
+// and serves as a central point for managing dependencies and notifications.
 type Server struct {
-	Router               *chi.Mux
-	RegistrationAddr     string
-	DeregistrationAddr   string
-	Port                 int
-	ServiceName          string
-	RequiredServices     []string
+	// Router is the Chi router used to define HTTP routes.
+	Router *chi.Mux
+
+	// RegistrationAddr is the address used by the server to register itself to the registry service.
+	RegistrationAddr string
+
+	// DeregistrationAddr is the address used by the server to deregister itself from the registry service..
+	DeregistrationAddr string
+
+	// Port is the port on which the server is running.
+	Port int
+
+	// ServiceName is the unique name of the service.
+	ServiceName string
+
+	// RequiredServices is a list of service names that this service depends on.
+	RequiredServices []string
+
+	// NotificationEndpoint is the URL where the server receives notifications.
 	NotificationEndpoint string
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"demo/cmd/services/business/handlers"
 	"demo/server"
 	"flag"
 	"fmt"
@@ -11,17 +12,17 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func setupRouter(logHandler LogHandler) *chi.Mux {
+func setupRouter(logger handlers.HTTPLogger) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 
-	handler := BusinessHandler{
-		LogHandler: logHandler,
+	handler := handlers.LogHandler{
+		Logger: logger,
 	}
 
-	noifyHandler := NotificationHandler{}
+	notifyHandler := handlers.NotificationHandler{}
 
-	noifyHandler.RegisterRoutes(router)
+	notifyHandler.RegisterRoutes(router)
 	handler.RegisterRoutes(router)
 
 	return router
@@ -34,12 +35,12 @@ func main() {
 	loggingServiceURL := flag.String("logging-service-url", "http://localhost:8081", "URL of the logging service")
 	flag.Parse()
 
-	logHandler := &HTTPLogHandler{
-		LoggerURL: *loggingServiceURL,
+	logger := handlers.HTTPLogger{
+		Endpoint: *loggingServiceURL + "/log",
 	}
 
 	server := &server.Server{
-		Router:               setupRouter(logHandler),
+		Router:               setupRouter(logger),
 		RegistrationAddr:     *registrationAddr,
 		DeregistrationAddr:   *deregistrationAddr,
 		Port:                 *port,
