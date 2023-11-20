@@ -35,7 +35,7 @@ func main() {
 		RegistrationAddr:     *registrationAddr,
 		DeregistrationAddr:   *deregistrationAddr,
 		Port:                 *port,
-		ServiceName:          "Registrar",
+		ServiceType:          "Registrar",
 		RequiredServices:     []string{},
 		NotificationEndpoint: fmt.Sprintf("http://localhost:%d/notify", *port),
 	}

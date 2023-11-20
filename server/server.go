@@ -31,7 +31,7 @@ type Server struct {
 	Port int
 
 	// ServiceName is the unique name of the service.
-	ServiceName string
+	ServiceType string
 
 	// RequiredServices is a list of service names that this service depends on.
 	RequiredServices []string
@@ -83,7 +83,7 @@ func (s *Server) StartServer() error {
 
 func (s *Server) RegisterMe() error {
 	selfRegistration := registry.Registration{
-		ServiceName:          s.ServiceName,
+		ServiceType:          s.ServiceType,
 		Port:                 s.Port,
 		IP:                   "127.0.0.1",
 		RequiredServices:     s.RequiredServices,
@@ -111,7 +111,7 @@ func (s *Server) RegisterMe() error {
 
 func (s *Server) DeregisterMe() error {
 
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%v/%v", s.DeregistrationAddr, s.ServiceName), nil)
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%v/%v", s.DeregistrationAddr, s.ServiceType), nil)
 	if err != nil {
 		return err
 	}

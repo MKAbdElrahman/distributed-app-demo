@@ -33,7 +33,7 @@ func (rh *RegistrationHandler) RegisterService(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err = rh.notifyDependentServices("register", registration.ServiceName)
+	err = rh.notifyDependentServices("register", registration.ServiceType)
 	if err != nil {
 		http.Error(w, "failed to notify dependent services", http.StatusInternalServerError)
 		return

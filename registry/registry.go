@@ -6,7 +6,7 @@ import (
 )
 
 type Registration struct {
-	ServiceName          string   `json:"serviceName"`
+	ServiceType          string   `json:"serviceType"`
 	Port                 int      `json:"port"`
 	IP                   string   `json:"ip"`
 	RequiredServices     []string `json:"dependentServices"`
@@ -32,7 +32,7 @@ func (r *InMemoryServiceRegistry) GetServices() ([]Registration, error) {
 }
 
 func (r *InMemoryServiceRegistry) PostService(registration *Registration) (*Registration, error) {
-	if registration == nil || registration.ServiceName == "" {
+	if registration == nil || registration.ServiceType == "" {
 		return nil, errors.New("invalid registration")
 	}
 
@@ -40,8 +40,10 @@ func (r *InMemoryServiceRegistry) PostService(registration *Registration) (*Regi
 	defer r.mu.Unlock()
 
 	for _, existingService := range r.services {
-		if existingService.ServiceName == registration.ServiceName {
-			return nil, errors.New("service already registered")
+		if existingService.ServiceType == registration.ServiceType &&
+			existingService.IP == registration.IP &&
+			existingService.Port == registration.Port {
+			return nil, errors.New("service already registered with the same type, IP, and port")
 		}
 	}
 
@@ -59,7 +61,7 @@ func (r *InMemoryServiceRegistry) DeleteService(serviceName string) error {
 
 	index := -1
 	for i, existingService := range r.services {
-		if existingService.ServiceName == serviceName {
+		if existingService.ServiceType == serviceName {
 			index = i
 			break
 		}

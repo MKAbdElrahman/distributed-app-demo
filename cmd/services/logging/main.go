@@ -34,7 +34,7 @@ func main() {
 		RegistrationAddr:     *registrationAddr,
 		DeregistrationAddr:   *deregistrationAddr,
 		Port:                 *port,
-		ServiceName:          "Logging",
+		ServiceType:          "Logging",
 		RequiredServices:     []string{},
 		NotificationEndpoint: fmt.Sprintf("http://localhost:%d/notify", *port),
 	}
