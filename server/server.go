@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"demo/registry"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -15,11 +16,13 @@ import (
 )
 
 type Server struct {
-	Router             *chi.Mux
-	RegistrationAddr   string
-	DeregistrationAddr string
-	Port               int
-	ServiceName        string
+	Router               *chi.Mux
+	RegistrationAddr     string
+	DeregistrationAddr   string
+	Port                 int
+	ServiceName          string
+	RequiredServices     []string
+	NotificationEndpoint string
 }
 
 func (s *Server) StartServer() error {
@@ -64,14 +67,12 @@ func (s *Server) StartServer() error {
 }
 
 func (s *Server) RegisterMe() error {
-	selfRegistration := struct {
-		ServiceName string `json:"serviceName"`
-		Port        int    `json:"port"`
-		IP          string `json:"ip"`
-	}{
-		ServiceName: s.ServiceName,
-		Port:        s.Port,
-		IP:          "127.0.0.1",
+	selfRegistration := registry.Registration{
+		ServiceName:          s.ServiceName,
+		Port:                 s.Port,
+		IP:                   "127.0.0.1",
+		RequiredServices:     s.RequiredServices,
+		NotificationEndpoint: s.NotificationEndpoint,
 	}
 
 	body, err := json.Marshal(selfRegistration)

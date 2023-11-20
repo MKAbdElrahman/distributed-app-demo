@@ -6,4 +6,5 @@ tasks:
   run-logging:
     - go run ./cmd/services/logging {{.CLI_ARGS}}
 
-  
+  run-business:
+    - go run ./cmd/services/business {{.CLI_ARGS}}

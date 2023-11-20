@@ -4,6 +4,7 @@ import (
 	"demo/registry"
 	"demo/server"
 	"flag"
+	"fmt"
 	"log"
 	"sync"
 
@@ -30,17 +31,18 @@ func main() {
 	flag.Parse()
 
 	server := &server.Server{
-		Router:             setupRouter(),
-		RegistrationAddr:   *registrationAddr,
-		DeregistrationAddr: *deregistrationAddr,
-		Port:               *port,
-		ServiceName:        "Registrar",
+		Router:               setupRouter(),
+		RegistrationAddr:     *registrationAddr,
+		DeregistrationAddr:   *deregistrationAddr,
+		Port:                 *port,
+		ServiceName:          "Registrar",
+		RequiredServices:     []string{},
+		NotificationEndpoint: fmt.Sprintf("http://localhost:%d/notify", *port),
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	// Start server in a goroutine
 	go func() {
 		defer wg.Done()
 		if err := server.StartServer(); err != nil {
@@ -48,7 +50,6 @@ func main() {
 		}
 	}()
 
-	// Wait for the server to finish
 	wg.Wait()
 
 }

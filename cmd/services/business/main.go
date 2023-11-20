@@ -11,31 +11,40 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func setupRouter() *chi.Mux {
+func setupRouter(logHandler LogHandler) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 
-	handler, err := DefaultLogToFileHandler("app.log")
-	if err != nil {
-		log.Fatal(err)
+	handler := BusinessHandler{
+		LogHandler: logHandler,
 	}
+
+	noifyHandler := NotificationHandler{}
+
+	noifyHandler.RegisterRoutes(router)
 	handler.RegisterRoutes(router)
+
 	return router
 }
 
 func main() {
-	port := flag.Int("port", 8081, "Port for the HTTP server")
+	port := flag.Int("port", 8082, "Port for the HTTP server")
 	registrationAddr := flag.String("registration-addr", "http://localhost:8080/register", "Registration service endpoint")
 	deregistrationAddr := flag.String("deregistration-addr", "http://localhost:8080/deregister", "Deregistration service endpoint")
+	loggingServiceURL := flag.String("logging-service-url", "http://localhost:8081", "URL of the logging service")
 	flag.Parse()
 
+	logHandler := &HTTPLogHandler{
+		LoggerURL: *loggingServiceURL,
+	}
+
 	server := &server.Server{
-		Router:               setupRouter(),
+		Router:               setupRouter(logHandler),
 		RegistrationAddr:     *registrationAddr,
 		DeregistrationAddr:   *deregistrationAddr,
 		Port:                 *port,
-		ServiceName:          "Logging",
-		RequiredServices:     []string{},
+		ServiceName:          "Business",
+		RequiredServices:     []string{"Logging"},
 		NotificationEndpoint: fmt.Sprintf("http://localhost:%d/notify", *port),
 	}
 
