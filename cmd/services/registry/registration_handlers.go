@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"demo/registry"
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -18,24 +17,27 @@ type RegistrationHandler struct {
 func (rh *RegistrationHandler) RegisterRoutes(r *chi.Mux) {
 	r.Post("/register", rh.RegisterService)
 	r.Get("/services", rh.GetServices)
-	r.Delete("/deregister/{serviceName}/{ip}/{port}", rh.DeregisterService)
+	r.Delete("/deregister/{id}", rh.DeregisterService)
 }
 
 func (rh *RegistrationHandler) RegisterService(w http.ResponseWriter, r *http.Request) {
-	var registration registry.Registration
+	var registration *registry.Registration
 	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
+		log.Println("Failed to decode registration request:", err)
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	registeredService, err := rh.Registry.PostService(&registration)
+	registeredService, err := rh.Registry.PostService(registration)
 	if err != nil {
+		log.Println("Failed to register service:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = rh.notifyDependentServices("register", registration.ServiceType, registeredService.Port, registration.IP)
+	err = rh.findAndNotifyDependentServices("register", registration)
 	if err != nil {
+		log.Println("Failed to notify dependent services:", err)
 		http.Error(w, "failed to notify dependent services", http.StatusInternalServerError)
 		return
 	}
@@ -47,7 +49,8 @@ func (rh *RegistrationHandler) RegisterService(w http.ResponseWriter, r *http.Re
 func (rh *RegistrationHandler) GetServices(w http.ResponseWriter, r *http.Request) {
 	services, err := rh.Registry.GetServices()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println("failed to get services")
+		http.Error(w, "failed to get services", http.StatusInternalServerError)
 		return
 	}
 
@@ -56,30 +59,34 @@ func (rh *RegistrationHandler) GetServices(w http.ResponseWriter, r *http.Reques
 }
 
 func (rh *RegistrationHandler) DeregisterService(w http.ResponseWriter, r *http.Request) {
-	serviceName := chi.URLParam(r, "serviceName")
-	portParam := chi.URLParam(r, "port")
-	ip := chi.URLParam(r, "ip")
+	serviceID := chi.URLParam(r, "id")
 
-	if serviceName == "" || ip == "" || portParam == "" {
-		http.Error(w, "invalid service name, port, or IP", http.StatusBadRequest)
+	if serviceID == "" {
+		log.Println("Invalid service ID:", serviceID)
+		http.Error(w, "invalid service ID", http.StatusBadRequest)
 		return
 	}
 
-	port, err := strconv.Atoi(portParam)
+	service, err := rh.Registry.GetServiceByID(serviceID)
+
 	if err != nil {
-		http.Error(w, "invalid port", http.StatusBadRequest)
+		log.Println("Failed to get service by ID:", err)
+		http.Error(w, "failed to get service by ID", http.StatusInternalServerError)
 		return
 	}
 
-	err = rh.notifyDependentServices("deregister", serviceName, port, ip)
+	err = rh.findAndNotifyDependentServices("deregister", service)
+
 	if err != nil {
+		log.Println("Failed to notify dependent services:", err)
 		http.Error(w, "failed to notify dependent services", http.StatusInternalServerError)
 		return
 	}
 
-	err = rh.Registry.DeleteService(serviceName)
+	err = rh.Registry.DeleteService(serviceID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println("Failed to delete service:", err)
+		http.Error(w, "failed to delete service", http.StatusInternalServerError)
 		return
 	}
 
@@ -87,8 +94,8 @@ func (rh *RegistrationHandler) DeregisterService(w http.ResponseWriter, r *http.
 	w.Write([]byte("Service deregistered successfully"))
 }
 
-func (rh *RegistrationHandler) notifyDependentServices(action string, serviceType string, port int, ip string) error {
-	dependentServices, err := rh.Registry.GetDependentServices(serviceType)
+func (rh *RegistrationHandler) findAndNotifyDependentServices(action string, service *registry.Registration) error {
+	dependentServices, err := rh.Registry.GetDependentServices(service.ServiceType)
 	if err != nil {
 		return err
 	}
@@ -96,13 +103,10 @@ func (rh *RegistrationHandler) notifyDependentServices(action string, serviceTyp
 	for _, dependentService := range dependentServices {
 		notificationURL := dependentService.NotificationEndpoint
 
-		payload := map[string]interface{}{
-			"action":      action,
-			"serviceType": serviceType,
-			"port":        port,
-			"ip":          ip,
+		payload := registry.NotificationPayload{
+			Action:       action,
+			Registration: *service,
 		}
-
 		payloadJSON, err := json.Marshal(payload)
 		if err != nil {
 			return err
@@ -110,7 +114,7 @@ func (rh *RegistrationHandler) notifyDependentServices(action string, serviceTyp
 
 		_, err = http.Post(notificationURL, "application/json", bytes.NewBuffer(payloadJSON))
 		if err != nil {
-			fmt.Println("Failed to notify dependent service:", err)
+			return err
 		}
 	}
 

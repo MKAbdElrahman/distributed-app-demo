@@ -6,26 +6,31 @@ import (
 )
 
 // ConnectedInstanceAddr represents the address information of a connected instance.
-type ConnectedInstanceAddr struct {
+type ConnectedInstance struct {
+	ID   string `json:"int"`
 	IP   string `json:"ip"`
 	Port int    `json:"port"`
 }
 
 // ConnectedInstance represents a specific instance of a connected service.
-type ConnectedInstances map[string]ConnectedInstanceAddr
+// a map from a service type to connected instance
+type ConnectedInstances map[string]ConnectedInstance
 
 type Registration struct {
+	ID                   string             `json:"id"`
 	ServiceType          string             `json:"serviceType"`
 	Port                 int                `json:"port"`
 	IP                   string             `json:"ip"`
 	RequiredServices     []string           `json:"dependentServices"`
 	ConnectedInstances   ConnectedInstances `json:"connectedInstances"`
 	NotificationEndpoint string             `json:"notificationEndpoint"`
+	HealthCheckEndpoint  string             `json:"healthcheckEndpoint"`
 }
 
 type ServiceRegistry interface {
 	GetServices() ([]Registration, error)
 	GetServicesByType(name string) ([]Registration, error)
+	GetServiceByID(id string) (*Registration, error)
 	GetDependentServices(serviceName string) ([]Registration, error)
 	PostService(r *Registration) (*Registration, error)
 	DeleteService(serviceName string) error
@@ -34,6 +39,11 @@ type ServiceRegistry interface {
 type InMemoryServiceRegistry struct {
 	mu       sync.Mutex
 	services []Registration
+}
+
+type NotificationPayload struct {
+	Action       string `json:"action"`
+	Registration Registration
 }
 
 func (r *InMemoryServiceRegistry) GetServices() ([]Registration, error) {
@@ -62,9 +72,9 @@ func (r *InMemoryServiceRegistry) PostService(registration *Registration) (*Regi
 	return registration, nil
 }
 
-func (r *InMemoryServiceRegistry) DeleteService(serviceName string) error {
-	if serviceName == "" {
-		return errors.New("invalid service name")
+func (r *InMemoryServiceRegistry) DeleteService(serviceID string) error {
+	if serviceID == "" {
+		return errors.New("invalid service ID")
 	}
 
 	r.mu.Lock()
@@ -72,7 +82,7 @@ func (r *InMemoryServiceRegistry) DeleteService(serviceName string) error {
 
 	index := -1
 	for i, existingService := range r.services {
-		if existingService.ServiceType == serviceName {
+		if existingService.ID == serviceID {
 			index = i
 			break
 		}
@@ -125,4 +135,21 @@ func (r *InMemoryServiceRegistry) GetServicesByType(serviceType string) ([]Regis
 	}
 
 	return servicesByType, nil
+}
+
+func (r *InMemoryServiceRegistry) GetServiceByID(id string) (*Registration, error) {
+	if id == "" {
+		return nil, errors.New("empty id")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, existingService := range r.services {
+		if existingService.ID == id {
+			return &existingService, nil
+		}
+	}
+
+	return nil, errors.New("id not found")
 }

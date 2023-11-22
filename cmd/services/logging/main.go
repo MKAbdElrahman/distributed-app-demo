@@ -39,6 +39,7 @@ func main() {
 		RequiredServices:     []string{},
 		ConnectedInstances:   make(registry.ConnectedInstances),
 		NotificationEndpoint: fmt.Sprintf("http://localhost:%d/notify", *port),
+		HealthCheckEndpoint:  fmt.Sprintf("http://localhost:%d/healthcheck", *port),
 	}
 
 	var wg sync.WaitGroup

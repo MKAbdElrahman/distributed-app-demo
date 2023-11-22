@@ -16,10 +16,17 @@ func setupRouter() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 
-	handler := &RegistrationHandler{
-		Registry: &registry.InMemoryServiceRegistry{},
+	registry := &registry.InMemoryServiceRegistry{}
+	registrationHandler := &RegistrationHandler{
+		Registry: registry,
 	}
-	handler.RegisterRoutes(router)
+
+	healthCheckHandler := &HealthCheckHandler{
+		Registry: registry,
+	}
+
+	registrationHandler.RegisterRoutes(router)
+	healthCheckHandler.RegisterRoutes(router)
 
 	return router
 }
@@ -39,6 +46,7 @@ func main() {
 		RequiredServices:     []string{},
 		ConnectedInstances:   make(registry.ConnectedInstances),
 		NotificationEndpoint: fmt.Sprintf("http://localhost:%d/notify", *port),
+		HealthCheckEndpoint:  fmt.Sprintf("http://localhost:%d/healthcheck", *port),
 	}
 
 	var wg sync.WaitGroup

@@ -13,11 +13,14 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 // Server represents a service that handles service registration, deregistration,
 // and serves as a central point for managing dependencies and notifications.
 type Server struct {
+	ID string
+
 	// Router is the Chi router used to define HTTP routes.
 	Router *chi.Mux
 
@@ -40,9 +43,14 @@ type Server struct {
 
 	// NotificationEndpoint is the URL where the server receives notifications.
 	NotificationEndpoint string
+
+	HealthCheckEndpoint string
 }
 
 func (s *Server) StartServer() error {
+
+	s.ID = uuid.New().String()
+
 	serverAddr := fmt.Sprintf(":%d", s.Port)
 	server := &http.Server{
 		Addr:    serverAddr,
@@ -50,6 +58,7 @@ func (s *Server) StartServer() error {
 	}
 
 	s.RegisterNotifyRoute()
+	s.RegisterHealthcheckRoute()
 
 	go func() {
 		log.Printf("Starting server on port %d...", s.Port)
@@ -87,11 +96,13 @@ func (s *Server) StartServer() error {
 
 func (s *Server) RegisterMe() error {
 	selfRegistration := registry.Registration{
+		ID:                   s.ID,
 		ServiceType:          s.ServiceType,
 		Port:                 s.Port,
 		IP:                   "127.0.0.1",
 		RequiredServices:     s.RequiredServices,
 		NotificationEndpoint: s.NotificationEndpoint,
+		HealthCheckEndpoint:  s.HealthCheckEndpoint,
 	}
 
 	body, err := json.Marshal(selfRegistration)
@@ -115,25 +126,29 @@ func (s *Server) RegisterMe() error {
 
 func (s *Server) DeregisterMe() error {
 	selfRegistration := registry.Registration{
+		ID:                   s.ID,
 		ServiceType:          s.ServiceType,
 		Port:                 s.Port,
 		IP:                   "127.0.0.1",
 		RequiredServices:     s.RequiredServices,
 		NotificationEndpoint: s.NotificationEndpoint,
+		HealthCheckEndpoint:  s.HealthCheckEndpoint,
 	}
 
-	// Assuming ServiceType is unique and can be used as a unique identifier for the resource
-	url := fmt.Sprintf("%v/%v/%v/%v", s.DeregistrationAddr, selfRegistration.ServiceType, selfRegistration.IP, selfRegistration.Port)
+	url := fmt.Sprintf("%v/%v", s.DeregistrationAddr, selfRegistration.ID)
 
 	fmt.Println(url)
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 	defer resp.Body.Close()
